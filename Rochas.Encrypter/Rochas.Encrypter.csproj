@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Version>1.0.2</Version>
+    <Authors>Renato Rocha</Authors>
+    <Description>A simple cryptography and hashing utility</Description>
+    <Copyright>Renato Rocha</Copyright>
+    <PackageIcon>crypto-icon.jpg</PackageIcon>
+    <RepositoryUrl>https://github.com/rocha83/Encrypter</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageTags>cryptography hashing aes simetric sha512 md5 base64 hex string binary</PackageTags>
+    <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Rochas.Extensions" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="crypto-icon.jpg">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Update="GNUv2_License.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
