@@ -3,10 +3,11 @@ using System.Text;
 using System.Collections;
 using System.Security.Cryptography;
 using Rochas.Extensions;
+using Rochas.Encrypter.Interfaces;
 
 namespace Rochas.Security.Encryption
 {
-    public class Encrypter : IDisposable
+    public class Encrypter : IEncrypter, IDisposable
     {
         #region Declarations
 
