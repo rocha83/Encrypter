@@ -13,6 +13,7 @@
     <RepositoryType>Git</RepositoryType>
     <PackageTags>cryptography hashing aes simetric sha512 md5 base64 hex string binary</PackageTags>
     <PackageLicenseFile>GNUv2_License.txt</PackageLicenseFile>
+    <PackageReleaseNotes>Added encrypter class interface for IoC</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
