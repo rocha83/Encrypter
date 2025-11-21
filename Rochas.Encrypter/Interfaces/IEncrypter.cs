@@ -8,7 +8,7 @@ namespace Rochas.Encrypter.Interfaces
         byte[] DecryptAsBinary(string encryptedText);
         string DecryptAsText(string encryptedText);
         BitArray DecryptBinary(byte[] encryptedArray, int arraySize);
-        string DecryptFromString(byte[] encryptedArray);
+        string DecryptBinary(byte[] encryptedArray);
         void Dispose();
         byte[] EncryptAsBinary(byte[] sourceArray);
         byte[] EncryptAsBinary(string text);

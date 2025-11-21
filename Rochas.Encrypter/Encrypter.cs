@@ -1,19 +1,17 @@
+using Rochas.Encrypter.Interfaces;
+using Rochas.Extensions;
 using System;
-using System.Text;
 using System.Collections;
 using System.Security.Cryptography;
-using Rochas.Extensions;
-using Rochas.Encrypter.Interfaces;
+using System.Text;
 
 namespace Rochas.Security.Encryption
 {
     public class Encrypter : IEncrypter, IDisposable
     {
         #region Declarations
-
-        private readonly AesCryptoServiceProvider _cryptoProvider;
-        private readonly SHA512 _hashProvider;
-        private readonly MD5 _auxHashProvider;
+        
+        private readonly byte[] _cryptoKey;
 
         #endregion
 
@@ -21,25 +19,14 @@ namespace Rochas.Security.Encryption
 
         public Encrypter()
         {
-            _hashProvider = SHA512.Create();
-            _auxHashProvider = MD5.Create();
         }
 
-        public Encrypter(string cryptoKey, string cryptoVector)
+        public Encrypter(string cryptoKey)
         {
-            _hashProvider = SHA512.Create();
-            _auxHashProvider = MD5.Create();
+            if (string.IsNullOrWhiteSpace(cryptoKey))
+                throw new ArgumentNullException("Crypto config key");
 
-            if (!string.IsNullOrWhiteSpace(cryptoKey) && !string.IsNullOrWhiteSpace(cryptoKey))
-            {
-                _cryptoProvider = new AesCryptoServiceProvider
-                {
-                    IV = Convert.FromBase64String(cryptoVector),
-                    Key = Convert.FromBase64String(cryptoKey)
-                };
-            }
-            else
-                throw new ArgumentNullException("Crypto config keys");
+            _cryptoKey = Convert.FromBase64String(cryptoKey);
         }
 
         #endregion
@@ -48,58 +35,42 @@ namespace Rochas.Security.Encryption
 
         public byte[] EncryptAsBinary(string text)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            char[] contentToConvert = text.ToCharArray();
-            byte[] convertedContent = new byte[contentToConvert.Length];
-
-            int cont = 0;
-            foreach (char token in contentToConvert)
-            {
-                convertedContent[cont] = Convert.ToByte(token);
-                cont++;
-            }
-
-            return _cryptoProvider.CreateEncryptor().TransformFinalBlock(convertedContent, 0, convertedContent.Length);
+            byte[] textBytes = Encoding.UTF8.GetBytes(text);
+            
+            return EncryptContent(textBytes);
         }
 
         public byte[] EncryptAsBinary(byte[] sourceArray)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            byte[] convertedContent = _cryptoProvider.CreateEncryptor().TransformFinalBlock(sourceArray, 0, sourceArray.Length);
-
-            return convertedContent;
+            return EncryptContent(sourceArray);
         }
 
         public byte[] EncryptBinary(BitArray sourceArray, int arraySize)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
             byte[] destinArray = new byte[arraySize];
-
             sourceArray.CopyTo(destinArray, 0);
 
-            return _cryptoProvider.CreateEncryptor().TransformFinalBlock(destinArray, 0, destinArray.Length);
+            return EncryptContent(destinArray);
         }
 
         public byte[] DecryptAsBinary(byte[] encryptedArray)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            return _cryptoProvider.CreateDecryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length);
+            return DecryptContent(encryptedArray);
         }
 
         public BitArray DecryptBinary(byte[] encryptedArray, int arraySize)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            BitArray destinArray = new BitArray(_cryptoProvider.CreateDecryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length))
+            BitArray destinArray = new BitArray(DecryptContent(encryptedArray))
             {
                 Length = arraySize
             };
@@ -109,37 +80,33 @@ namespace Rochas.Security.Encryption
 
         public byte[] DecryptAsBinary(string encryptedText)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
             byte[] encryptedArray = Convert.FromBase64String(encryptedText);
-
-            byte[] destinArray = _cryptoProvider.CreateDecryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length);
+            byte[] destinArray = DecryptContent(encryptedArray);
 
             return destinArray;
         }
 
         public string EncryptAsString(BitArray sourceArray, int arraySize)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
             byte[] encryptedArray;
             byte[] arrayToConvert = new byte[arraySize];
 
             sourceArray.CopyTo(arrayToConvert, 0);
 
-            encryptedArray = _cryptoProvider.CreateEncryptor().TransformFinalBlock(arrayToConvert, 0, arrayToConvert.Length);
+            encryptedArray = EncryptContent(arrayToConvert);
 
             return Convert.ToBase64String(encryptedArray);
         }
 
-        public string DecryptFromString(byte[] encryptedArray)
+        public string DecryptBinary(byte[] encryptedArray)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            byte[] arrayToConvert = _cryptoProvider.CreateDecryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length);
+            byte[] arrayToConvert = DecryptContent(encryptedArray);
             StringBuilder destinText = new StringBuilder();
 
             foreach (byte token in arrayToConvert)
@@ -150,32 +117,22 @@ namespace Rochas.Security.Encryption
 
         public string EncryptAsText(string sourceText)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
-            char[] arrayToConvert = sourceText.ToCharArray();
-            byte[] encryptedArray = new byte[arrayToConvert.Length];
+            byte[] encryptedArray = Encoding.UTF8.GetBytes(sourceText);
 
-            int cont = 0;
-            foreach (char token in arrayToConvert)
-            {
-                encryptedArray[cont] = Convert.ToByte(token);
-                cont++;
-            }
-
-            byte[] destinArray = _cryptoProvider.CreateEncryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length);
+            byte[] destinArray = EncryptContent(encryptedArray);
 
             return Convert.ToBase64String(destinArray);
         }
 
         public string DecryptAsText(string encryptedText)
         {
-            if (_cryptoProvider == null)
-                throw new ArgumentNullException("Crypto config keys");
+            EnsureCryptoKey();
 
             byte[] encryptedArray = Convert.FromBase64String(encryptedText);
 
-            byte[] arrayToConvert = _cryptoProvider.CreateDecryptor().TransformFinalBlock(encryptedArray, 0, encryptedArray.Length);
+            byte[] arrayToConvert = DecryptContent(encryptedArray);
             StringBuilder destinText = new StringBuilder();
 
             foreach (byte simbolo in arrayToConvert)
@@ -190,32 +147,38 @@ namespace Rochas.Security.Encryption
 
         public string GenerateHash(string sourceText)
         {
-            return _hashProvider.ComputeHash(sourceText.ToByteArray()).ToNewString();
-        }
-
-        public string GenerateAuxHash(string sourceText)
-        {
-            return _auxHashProvider.ComputeHash(sourceText.ToByteArray()).ToNewString();
+            using var hash = SHA512.Create();
+            return hash.ComputeHash(sourceText.ToByteArray()).ToNewString();
         }
 
         public string GenerateBase64Hash(string sourceText)
         {
-            return _hashProvider.ComputeHash(sourceText.ToByteArray()).ToNewBase64String();
-        }
-
-        public string GenerateBase64AuxHash(string sourceText)
-        {
-            return _auxHashProvider.ComputeHash(sourceText.ToByteArray()).ToNewBase64String();
+            using var hash = SHA512.Create();
+            return hash.ComputeHash(sourceText.ToByteArray()).ToNewBase64String();
         }
 
         public string GenerateHexStringHash(string sourceText)
         {
-            return _hashProvider.ComputeHash(sourceText.ToByteArray()).ToNewHexString();
+            using var hash = SHA512.Create();
+            return hash.ComputeHash(sourceText.ToByteArray()).ToNewHexString();
+        }
+
+        public string GenerateAuxHash(string sourceText)
+        {
+            using var auxHash = MD5.Create();
+            return auxHash.ComputeHash(sourceText.ToByteArray()).ToNewString();
+        }
+
+        public string GenerateBase64AuxHash(string sourceText)
+        {
+            using var auxHash = MD5.Create();
+            return auxHash.ComputeHash(sourceText.ToByteArray()).ToNewBase64String();
         }
 
         public string GenerateHexStringAuxHash(string sourceText)
         {
-            return _auxHashProvider.ComputeHash(sourceText.ToByteArray()).ToNewHexString();
+            using var auxHash = MD5.Create();
+            return auxHash.ComputeHash(sourceText.ToByteArray()).ToNewHexString();
         }
 
         #endregion
@@ -237,9 +200,74 @@ namespace Rochas.Security.Encryption
 
         #region Helper Methods
 
+        private void EnsureCryptoKey()
+        {
+            if (_cryptoKey == null)
+                throw new ArgumentNullException("Crypto config key");
+        }
+
+        private byte[] EncryptContent(byte[] plainBytes)
+        {
+            if ((plainBytes == null) || (plainBytes.Length == 0))
+                throw new ArgumentNullException(nameof(plainBytes));
+
+            byte[] cipherBytes = new byte[plainBytes.Length];
+            var nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+            var tag = new byte[AesGcm.TagByteSizes.MaxSize];
+            RandomNumberGenerator.Fill(nonce);
+
+            var cryptoProvider = new AesGcm(_cryptoKey);
+            cryptoProvider.Encrypt(nonce, plainBytes, cipherBytes, tag);
+
+            byte[] result = new byte[nonce.Length + tag.Length + cipherBytes.Length];
+            Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+            Buffer.BlockCopy(tag, 0, result, nonce.Length, tag.Length);
+            Buffer.BlockCopy(cipherBytes, 0, result, nonce.Length + tag.Length, cipherBytes.Length);
+
+            CryptographicOperations.ZeroMemory(plainBytes);
+            CryptographicOperations.ZeroMemory(cipherBytes);
+            CryptographicOperations.ZeroMemory(nonce);
+            CryptographicOperations.ZeroMemory(tag);
+
+            return result;
+        }
+
+        private byte[] DecryptContent(byte[] encryptedBytes)
+        {
+            if ((encryptedBytes == null) || (encryptedBytes.Length == 0))
+                throw new ArgumentNullException(nameof(encryptedBytes));
+
+            int nonceSize = AesGcm.NonceByteSizes.MaxSize;
+            int tagSize = AesGcm.TagByteSizes.MaxSize;
+            int cipherSize = encryptedBytes.Length - nonceSize - tagSize;
+            var nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
+            var tag = new byte[AesGcm.TagByteSizes.MaxSize];
+
+            if (cipherSize < 0)
+                throw new Exception("Invalid encrypted data length");
+
+            byte[] cipherBytes = new byte[cipherSize];
+
+            Buffer.BlockCopy(encryptedBytes, 0, nonce, 0, nonceSize);
+            Buffer.BlockCopy(encryptedBytes, nonceSize, tag, 0, tagSize);
+            Buffer.BlockCopy(encryptedBytes, nonceSize + tagSize, cipherBytes, 0, cipherSize);
+
+            byte[] result = new byte[cipherBytes.Length];
+
+            var cryptoProvider = new AesGcm(_cryptoKey);
+            cryptoProvider.Decrypt(nonce, cipherBytes, tag, result);
+
+            CryptographicOperations.ZeroMemory(encryptedBytes);
+            CryptographicOperations.ZeroMemory(cipherBytes);
+            CryptographicOperations.ZeroMemory(nonce);
+            CryptographicOperations.ZeroMemory(tag);
+
+            return result;
+        }
+
         public void Dispose()
         {
-            GC.ReRegisterForFinalize(this);
+            GC.SuppressFinalize(this);
         }
 
         #endregion
