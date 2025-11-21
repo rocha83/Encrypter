@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Rochas.Extensions" Version="1.0.0" />
+    <PackageReference Include="Rochas.Extensions" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
